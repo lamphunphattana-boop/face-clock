@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ลงเวลาด้วยใบหน้า</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 16px; }
+    video { width: 100%; max-width: 480px; background: #000; border-radius: 8px; display: none; }
+    button { font-size: 18px; padding: 12px 24px; margin: 8px; cursor: pointer; }
+    button:disabled { cursor: not-allowed; }
+    #status { margin: 12px; font-size: 16px; }
+    #err { color: #c00; white-space: pre-wrap; margin: 8px; }
+    #help { background: #fff4e5; border-radius: 8px; padding: 12px; text-align: left;
+            max-width: 480px; margin: 8px auto; display: none; }
+  </style>
+</head>
+<body>
+  <h2>ลงเวลาด้วยใบหน้า</h2>
+  <div id="status">กำลังเริ่มระบบ...</div>
+  <div id="err"></div>
+
+  <button id="btnCam" disabled onclick="startCamera()">📷 เปิดกล้อง (ขออนุญาตใช้กล้อง)</button>
+  <div id="help"></div>
+  <video id="cam" autoplay muted playsinline></video><br>
+  <button id="btnScan" disabled onclick="scan()">สแกนใบหน้า</button>
+
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.js"></script>
+  <script>
+    // ===== ตั้งค่า: ใส่ URL Web App (.../exec) ของ Apps Script =====
+    const API = 'https://script.google.com/macros/s/AKfycbyWFZxXii_R94r3CeitwlQ6SXIkh-d6erdy4pL7UijiYoh8lvX0ijfj_zoqdXhLkS5n/exec';
+
+    const $ = id => document.getElementById(id);
+    const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model/';
+    let matcher = null, stream = null, modelsReady = false;
+
+    window.onerror = m => { $('err').textContent += 'ERROR: ' + m + '\n'; };
+    window.onunhandledrejection = e => {
+      $('err').textContent += 'ERROR: ' + (e.reason && e.reason.message || e.reason) + '\n';
+    };
+
+    // เรียก Apps Script (POST ใช้ text/plain เพื่อเลี่ยง CORS preflight)
+    async function api(action, payload) {
+      const res = payload
+        ? await fetch(API, { method: 'POST', body: JSON.stringify({ action, ...payload }) })
+        : await fetch(API + '?action=' + action);
+      const j = await res.json();
+      if (!j.ok) throw new Error(j.error);
+      return j.data;
+    }
+
+    // 1) โหลดโมเดล + ข้อมูลพนักงาน (ยังไม่แตะกล้อง)
+    async function init() {
+      if (typeof faceapi === 'undefined') throw new Error('โหลด face-api.js ไม่สำเร็จ');
+      $('status').textContent = 'กำลังโหลดโมเดล...';
+      await Promise.all([
+        faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+      ]);
+      modelsReady = true;
+
+      $('status').textContent = 'กำลังโหลดข้อมูลพนักงาน...';
+      const faces = await api('getFaces');
+      if (faces.length) {
+        matcher = new faceapi.FaceMatcher(faces.map(f =>
+          new faceapi.LabeledFaceDescriptors(String(f.id), [new Float32Array(f.descriptor)])), 0.5);
+      }
+      $('status').textContent = 'พร้อมแล้ว กดปุ่ม "เปิดกล้อง" (พนักงานที่ลงทะเบียน: ' + faces.length + ' คน)';
+      $('btnCam').disabled = false;
+    }
+
+    // 2) ขออนุญาตกล้องเมื่อผู้ใช้กดปุ่ม
+    async function startCamera() {
+      $('err').textContent = '';
+      $('help').style.display = 'none';
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        return showHelp('เบราว์เซอร์นี้ไม่รองรับกล้อง หรือหน้านี้ไม่ได้เปิดผ่าน HTTPS');
+      }
+      $('btnCam').disabled = true;
+      $('status').textContent = 'กำลังขออนุญาตใช้กล้อง... กด "อนุญาต" ที่หน้าต่างด้านบนของเบราว์เซอร์';
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+        });
+        $('cam').srcObject = stream;
+        $('cam').style.display = 'inline-block';
+        $('status').textContent = 'เปิดกล้องแล้ว มองกล้องแล้วกด "สแกนใบหน้า"';
+        $('btnScan').disabled = false;
+        $('btnCam').textContent = '📷 เปิดกล้องอยู่';
+      } catch (e) {
+        $('btnCam').disabled = false;
+        $('status').textContent = 'เปิดกล้องไม่สำเร็จ';
+        handleCamError(e);
+      }
+    }
+
+    function handleCamError(e) {
+      $('err').textContent = e.name + ': ' + e.message;
+      if (e.name === 'NotAllowedError') {
+        showHelp(
+          '<b>กล้องถูกปฏิเสธ</b><br>' +
+          'กดไอคอนรูปแม่กุญแจ/ตั้งค่าหน้าเว็บ ข้างช่องที่อยู่เว็บ แล้วเปลี่ยน "กล้อง" เป็น <b>อนุญาต</b> จากนั้นรีเฟรชหน้า');
+      } else if (e.name === 'NotFoundError') {
+        showHelp('ไม่พบกล้องในอุปกรณ์นี้ ตรวจสอบว่าต่อกล้องแล้ว');
+      } else if (e.name === 'NotReadableError') {
+        showHelp('กล้องกำลังถูกใช้งานโดยโปรแกรมอื่น (เช่น Zoom, Line) ปิดโปรแกรมนั้นก่อนแล้วลองใหม่');
+      } else if (e.name === 'SecurityError') {
+        showHelp('หน้านี้ไม่ได้รับอนุญาตให้ใช้กล้อง ตรวจสอบว่าเปิดผ่าน HTTPS และไม่ได้ฝังอยู่ใน iframe');
+      } else {
+        showHelp('เปิดกล้องไม่สำเร็จ: ' + e.message);
+      }
+    }
+
+    function showHelp(html) { $('help').innerHTML = html; $('help').style.display = 'block'; }
+
+    // 3) สแกน
+    async function scan() {
+      if (!modelsReady) return;
+      const det = await faceapi.detectSingleFace($('cam')).withFaceLandmarks().withFaceDescriptor();
+      if (!det) { $('status').textContent = 'ไม่พบใบหน้า ลองใหม่อีกครั้ง'; return; }
+      if (!matcher) { $('status').textContent = 'ยังไม่มีข้อมูลใบหน้าที่ลงทะเบียน'; return; }
+      const best = matcher.findBestMatch(det.descriptor);
+      if (best.label === 'unknown') { $('status').textContent = 'ไม่รู้จักใบหน้านี้'; return; }
+
+      $('btnScan').disabled = true;
+      try {
+        const r = await api('clockInOut', { id: best.label });
+        $('status').textContent = r.name + ' ' + r.type + ' เวลา ' + r.time;
+      } catch (e) {
+        $('err').textContent += 'Server: ' + e.message + '\n';
+      }
+      $('btnScan').disabled = false;
+    }
+
+    init().catch(e => {
+      $('status').textContent = 'เริ่มระบบไม่สำเร็จ';
+      $('err').textContent += e.name + ': ' + e.message + '\n';
+    });
+  </script>
+</body>
+</html>
