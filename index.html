@@ -62,6 +62,16 @@ input{width:100%;padding:10px 12px;border:1px solid #cfd6e4;border-radius:10px;f
 table{width:100%;border-collapse:collapse;font-size:.95rem}
 th{text-align:left;font-weight:500;color:var(--mut);padding:8px;border-bottom:1px solid var(--line)}
 td{padding:10px 8px;border-bottom:1px solid var(--line)}
+dialog{border:0;border-radius:20px;padding:24px;width:min(92vw,360px);box-shadow:0 24px 60px rgba(15,27,61,.35)}
+dialog::backdrop{background:rgba(15,27,61,.55);backdrop-filter:blur(4px)}
+dialog h2{margin-bottom:4px}dialog p{margin:0 0 14px;color:var(--mut);font-size:.95rem}
+#pinInput{text-align:center;font-size:1.6rem;letter-spacing:.4em;padding:12px}
+#pinMsg{min-height:1.4em;margin:8px 0 0;color:var(--bad);font-size:.9rem;text-align:center}
+dialog .row{margin-top:8px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,24px);opacity:0;pointer-events:none;background:var(--ink);color:#fff;padding:12px 18px;border-radius:14px;box-shadow:0 12px 32px rgba(15,27,61,.3);font-size:.95rem;max-width:90vw;transition:opacity .2s,transform .2s;z-index:9}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#toast.ok{background:var(--ok)}#toast.error{background:var(--bad)}
+@media(prefers-reduced-motion:reduce){#toast{transition:none}}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -111,6 +121,13 @@ td{padding:10px 8px;border-bottom:1px solid var(--line)}
 </section>
 </div>
 
+<dialog id="pinDlg"><form id="pinForm">
+  <h2>รหัสผู้ดูแล</h2><p>ใส่รหัสเพื่อเข้าใช้งานส่วนนี้</p>
+  <input id="pinInput" type="password" inputmode="numeric" autocomplete="off" aria-label="รหัสผู้ดูแล">
+  <div id="pinMsg" role="alert"></div>
+  <div class="row"><button type="button" class="btn ghost" id="pinCancel">ยกเลิก</button><button class="btn" id="pinOk">ยืนยัน</button></div>
+</form></dialog>
+<div id="toast" role="status"></div>
 <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.js"></script>
 <script>
 const API='https://script.google.com/macros/s/AKfycbz3WGPodmwsqNd6NIgYzGPu6BGTYEE1TatbWiDJb1hr9ZvZKxGMgmpNKnRL1xYf0i_7/exec';
@@ -121,8 +138,20 @@ let matcher=null,faces=[],stream=null,ready=false,busy=false,pin=null,rows=[],re
 
 async function api(action,p){
   const r=p?await fetch(API,{method:'POST',body:JSON.stringify({action,...p})}):await fetch(API+'?action='+action);
-  const j=await r.json(); if(!j.ok) throw new Error(j.error); return j.data;
+  const j=await r.json();
+  if(!j.ok) throw new Error(j.error==='unknown action'?'เซิร์ฟเวอร์ยังเป็นเวอร์ชันเก่า ให้ Deploy เวอร์ชันใหม่ใน Apps Script':j.error);
+  return j.data;
 }
+let tt;function toast(t,k=''){const e=$('toast');e.textContent=t;e.className='show '+k;clearTimeout(tt);tt=setTimeout(()=>e.className='',3200);}
+function askPin(){return new Promise(res=>{
+  const d=$('pinDlg'),i=$('pinInput'),m=$('pinMsg'),f=$('pinForm');i.value='';m.textContent='';d.showModal();i.focus();
+  const end=ok=>{f.onsubmit=null;$('pinCancel').onclick=null;d.oncancel=null;d.close();res(ok);};
+  $('pinCancel').onclick=()=>end(false);d.oncancel=e=>{e.preventDefault();end(false);};
+  f.onsubmit=async e=>{e.preventDefault();$('pinOk').disabled=true;
+    try{await api('checkPin',{pin:i.value});pin=i.value;end(true);}
+    catch(err){m.textContent=err.message;i.select();}
+    $('pinOk').disabled=false;};
+});}
 function status(t,k=''){const s=$('status');s.textContent=t;s.className=k;}
 function sync(){const on=!!stream&&ready&&!busy;$('btnScan').disabled=!on;$('btnReg').disabled=!on;}
 const today=()=>new Date().toLocaleDateString('en-CA',{timeZone:TZ});
@@ -178,7 +207,7 @@ async function scan(){
     $('res').innerHTML=`<div class="av">${esc(r.name[0])}</div><div><b>${esc(r.name)}</b><span class="badge ${isIn?'b-in':'b-out'}">${r.type}</span> <small>เวลา ${r.time}</small></div>`;
     recent.unshift(r); recent=recent.slice(0,5);
     $('recent').innerHTML=recent.map(x=>`<li><span>${esc(x.name)}</span><span><span class="badge ${x.type==='เข้างาน'?'b-in':'b-out'}">${x.type}</span> ${x.time}</span></li>`).join('');
-    status(`บันทึก${r.type}ของ ${r.name} แล้ว`,'ok');
+    status(`บันทึก${r.type}ของ ${r.name} แล้ว`,'ok'); toast(`${r.name} ${r.type} ${r.time}`,'ok');
   }catch(e){status(e.message,'error');}
   finally{working(false);}
 }
@@ -203,7 +232,7 @@ async function register(){
     status('กำลังบันทึก...');
     await api('registerFace',{pin,id,name,group,descriptor:avg});
     await loadFaces(); ['eId','eName','eGroup'].forEach(k=>$(k).value='');
-    status(`ลงทะเบียน ${name} สำเร็จ`,'ok');
+    status(`ลงทะเบียน ${name} สำเร็จ`,'ok'); toast(`ลงทะเบียน ${name} สำเร็จ`,'ok');
   }catch(e){if(/รหัสผู้ดูแล/.test(e.message))pin=null; status(e.message,'error');}
   finally{working(false);}
 }
@@ -226,8 +255,7 @@ function renderLogs(){
 // ---------- สลับหน้า ----------
 async function setView(v){
   if(v!=='clock'&&!pin){
-    const p=prompt('ใส่รหัสผู้ดูแล'); if(!p) return;
-    try{await api('checkPin',{pin:p}); pin=p;}catch(e){alert(e.message); return;}
+    if(!await askPin()) return;
   }
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   $('main').hidden=v==='logs'; $('v-logs').hidden=v!=='logs';
