@@ -1,144 +1,245 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ลงเวลาด้วยใบหน้า</title>
-  <style>
-    body { font-family: sans-serif; text-align: center; padding: 16px; }
-    video { width: 100%; max-width: 480px; background: #000; border-radius: 8px; display: none; }
-    button { font-size: 18px; padding: 12px 24px; margin: 8px; cursor: pointer; }
-    button:disabled { cursor: not-allowed; }
-    #status { margin: 12px; font-size: 16px; }
-    #err { color: #c00; white-space: pre-wrap; margin: 8px; }
-    #help { background: #fff4e5; border-radius: 8px; padding: 12px; text-align: left;
-            max-width: 480px; margin: 8px auto; display: none; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ลงเวลาด้วยใบหน้า</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500&family=Prompt:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0f1b3d;--bg:#f1f4f9;--line:#e3e8f0;--mut:#667085;--pri:#2f5bff;--ok:#0e9f6e;--out:#d97706;--bad:#d92d20}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 'Noto Sans Thai','Leelawadee UI',Tahoma,system-ui,sans-serif}
+.wrap{max-width:1000px;margin:0 auto;padding:0 16px}
+header{background:var(--ink);color:#fff;padding:20px 0 64px}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+h1,h2,nav button,#clock,.badge,th{font-family:'Prompt','Noto Sans Thai',sans-serif}
+h1{font-size:1.05rem;font-weight:600;margin:0;display:flex;align-items:center;gap:10px}
+h2{font-size:1.1rem;font-weight:600;margin:0 0 12px}
+#clock{font-size:clamp(2.4rem,8vw,3.8rem);font-weight:600;line-height:1;font-variant-numeric:tabular-nums;text-align:right}
+#date{opacity:.7;font-size:.9rem;text-align:right;margin-top:4px}
+nav{display:flex;gap:4px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:6px;margin:-34px 0 16px;box-shadow:0 8px 24px rgba(15,27,61,.12)}
+nav button{flex:1;border:0;background:none;padding:10px 6px;border-radius:10px;font-size:.95rem;font-weight:500;color:var(--mut);cursor:pointer}
+nav button.on{background:var(--ink);color:#fff}
+button:focus-visible,input:focus-visible{outline:3px solid var(--pri);outline-offset:2px}
+.grid{display:grid;gap:16px;grid-template-columns:1fr}
+@media(min-width:860px){.grid{grid-template-columns:1.2fr 1fr}}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:16px}
+.grid .card:last-child{margin-bottom:0}
+.cam{position:relative;aspect-ratio:4/3;background:#0b1226;border-radius:12px;overflow:hidden;display:grid;place-items:center}
+video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:none}
+.oval{position:relative;width:44%;aspect-ratio:3/4;border:3px dashed rgba(255,255,255,.75);border-radius:50%;overflow:hidden;display:none}
+.oval::after{content:"";position:absolute;left:0;right:0;top:0;height:22%;background:linear-gradient(transparent,rgba(47,91,255,.55));opacity:0}
+.scanning .oval::after{opacity:1;animation:sweep 1.1s ease-in-out infinite alternate}
+@keyframes sweep{to{transform:translateY(360%)}}
+@media(prefers-reduced-motion:reduce){.scanning .oval::after{animation:none;top:40%}}
+.live video,.live .oval{display:block}.live #ph{display:none}
+#ph{color:#cbd5e1;text-align:center;padding:16px}
+.btn{border:0;border-radius:12px;padding:12px 20px;font:500 1rem 'Prompt',sans-serif;background:var(--pri);color:#fff;cursor:pointer}
+.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.btn:disabled{background:#d0d5dd;color:#fff;cursor:not-allowed}
+.row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}.row .btn{flex:1}
+#status{margin-top:12px;padding:10px 14px;border-radius:10px;background:#eef2ff;font-size:.95rem}
+#status.ok{background:#e7f8f1;color:#05603a}#status.warn{background:#fff4e0;color:#93370d}#status.error{background:#fee4e2;color:#912018}
+#help{display:none;margin-top:12px;padding:12px;border-radius:10px;background:#fff4e0;color:#93370d;font-size:.9rem}
+.who{display:flex;align-items:center;gap:14px}
+.av{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;font:600 1.4rem 'Prompt',sans-serif;color:#fff;background:var(--mut);flex:none}
+.in .av{background:var(--ok)}.out .av{background:var(--out)}
+.who b{font-size:1.2rem;display:block}.who small{color:var(--mut)}
+.badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:.85rem;font-weight:500}
+.b-in{background:#e7f8f1;color:#05603a}.b-out{background:#fff4e0;color:#93370d}
+ul{list-style:none;margin:0;padding:0}
+li{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--line);font-size:.95rem}
+.muted{color:var(--mut);font-size:.9rem}
+label{display:block;font-size:.9rem;font-weight:500;margin:10px 0 4px}
+input{width:100%;padding:10px 12px;border:1px solid #cfd6e4;border-radius:10px;font:inherit}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.stats div{background:var(--bg);border-radius:12px;padding:10px;text-align:center}
+.stats b{display:block;font:600 1.5rem 'Prompt',sans-serif}.stats span{font-size:.85rem;color:var(--mut)}
+.tools{display:flex;gap:8px;flex-wrap:wrap}.tools input{flex:1;min-width:140px;width:auto}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.95rem}
+th{text-align:left;font-weight:500;color:var(--mut);padding:8px;border-bottom:1px solid var(--line)}
+td{padding:10px 8px;border-bottom:1px solid var(--line)}
+[hidden]{display:none!important}
+</style>
 </head>
 <body>
-  <h2>ลงเวลาด้วยใบหน้า</h2>
-  <div id="status">กำลังเริ่มระบบ...</div>
-  <div id="err"></div>
+<header><div class="wrap top">
+  <h1><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="11" r="3.2"/><path d="M7.5 17c.8-2 2.4-3 4.5-3s3.7 1 4.5 3"/></svg>ลงเวลาด้วยใบหน้า</h1>
+  <div><div id="clock">--:--:--</div><div id="date"></div></div>
+</div></header>
 
-  <button id="btnCam" disabled onclick="startCamera()">📷 เปิดกล้อง (ขออนุญาตใช้กล้อง)</button>
-  <div id="help"></div>
-  <video id="cam" autoplay muted playsinline></video><br>
-  <button id="btnScan" disabled onclick="scan()">สแกนใบหน้า</button>
+<div class="wrap">
+<nav>
+  <button class="on" data-v="clock">ลงเวลา</button>
+  <button data-v="reg">ลงทะเบียนใบหน้า</button>
+  <button data-v="logs">บันทึกเวลา</button>
+</nav>
 
-  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.js"></script>
-  <script>
-    // ===== ตั้งค่า: ใส่ URL Web App (.../exec) ของ Apps Script =====
-    const API = 'https://script.google.com/macros/s/AKfycbz3WGPodmwsqNd6NIgYzGPu6BGTYEE1TatbWiDJb1hr9ZvZKxGMgmpNKnRL1xYf0i_7/exec';
+<div class="grid" id="main">
+  <section class="card" id="camCard">
+    <div class="cam" id="cam"><div id="ph"><p>เปิดกล้องเพื่อเริ่มสแกนใบหน้า</p><button class="btn" id="btnCam" disabled>เปิดกล้อง</button></div>
+      <video id="v" autoplay muted playsinline></video><div class="oval"></div></div>
+    <div id="status">กำลังเริ่มระบบ...</div>
+    <div id="help"></div>
+  </section>
+  <section>
+    <div id="v-clock">
+      <div class="card"><div class="who" id="res"><div class="av">?</div><div><b>ยังไม่มีการสแกน</b><small>มองกล้องแล้วกดสแกนใบหน้า</small></div></div>
+        <div class="row"><button class="btn" id="btnScan" disabled>สแกนใบหน้า</button></div></div>
+      <div class="card"><h2>ลงเวลาล่าสุด</h2><ul id="recent"><li class="muted">ยังไม่มีรายการในรอบนี้</li></ul>
+        <p class="muted" style="margin:12px 0 0">พนักงานที่ลงทะเบียน <b id="count">0</b> คน</p></div>
+    </div>
+    <div id="v-reg" hidden>
+      <div class="card"><h2>เพิ่มข้อมูลใบหน้า</h2>
+        <label for="eId">รหัสพนักงาน</label><input id="eId" autocomplete="off">
+        <label for="eName">ชื่อ-นามสกุล</label><input id="eName" autocomplete="off">
+        <label for="eGroup">กลุ่มงาน</label><input id="eGroup" autocomplete="off">
+        <div class="row"><button class="btn" id="btnReg" disabled>ถ่ายและบันทึกใบหน้า</button></div>
+        <p class="muted">เปิดกล้อง มองตรง ในที่สว่าง ระบบจะถ่าย 3 ภาพต่อเนื่อง</p></div>
+    </div>
+  </section>
+</div>
 
-    const $ = id => document.getElementById(id);
-    const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model/';
-    let matcher = null, stream = null, modelsReady = false;
+<section class="card" id="v-logs" hidden>
+  <h2>บันทึกเวลา</h2>
+  <div class="tools"><input type="date" id="logDate" aria-label="วันที่"><input id="logQ" placeholder="ค้นหาชื่อหรือรหัส"><button class="btn ghost" id="btnLog">โหลดใหม่</button></div>
+  <div class="stats"><div><b id="sAll">0</b><span>ทั้งหมด</span></div><div><b id="sIn">0</b><span>เข้างาน</span></div><div><b id="sOut">0</b><span>ออกงาน</span></div></div>
+  <div class="scroll"><table><thead><tr><th>วันที่</th><th>เวลา</th><th>รหัส</th><th>ชื่อ</th><th>ประเภท</th></tr></thead><tbody id="logBody"></tbody></table></div>
+</section>
+</div>
 
-    window.onerror = m => { $('err').textContent += 'ERROR: ' + m + '\n'; };
-    window.onunhandledrejection = e => {
-      $('err').textContent += 'ERROR: ' + (e.reason && e.reason.message || e.reason) + '\n';
-    };
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.js"></script>
+<script>
+const API='https://script.google.com/macros/s/AKfycbz3WGPodmwsqNd6NIgYzGPu6BGTYEE1TatbWiDJb1hr9ZvZKxGMgmpNKnRL1xYf0i_7/exec';
+const TZ='Asia/Bangkok',MODEL='https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model/';
+const $=id=>document.getElementById(id),sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let matcher=null,faces=[],stream=null,ready=false,busy=false,pin=null,rows=[],recent=[];
 
-    // เรียก Apps Script (POST ใช้ text/plain เพื่อเลี่ยง CORS preflight)
-    async function api(action, payload) {
-      const res = payload
-        ? await fetch(API, { method: 'POST', body: JSON.stringify({ action, ...payload }) })
-        : await fetch(API + '?action=' + action);
-      const j = await res.json();
-      if (!j.ok) throw new Error(j.error);
-      return j.data;
+async function api(action,p){
+  const r=p?await fetch(API,{method:'POST',body:JSON.stringify({action,...p})}):await fetch(API+'?action='+action);
+  const j=await r.json(); if(!j.ok) throw new Error(j.error); return j.data;
+}
+function status(t,k=''){const s=$('status');s.textContent=t;s.className=k;}
+function sync(){const on=!!stream&&ready&&!busy;$('btnScan').disabled=!on;$('btnReg').disabled=!on;}
+const today=()=>new Date().toLocaleDateString('en-CA',{timeZone:TZ});
+
+function tick(){const d=new Date();
+  $('clock').textContent=d.toLocaleTimeString('th-TH',{timeZone:TZ,hour12:false});
+  $('date').textContent=d.toLocaleDateString('th-TH',{timeZone:TZ,weekday:'long',day:'numeric',month:'long',year:'numeric'});}
+tick();setInterval(tick,1000);
+
+async function loadFaces(){
+  faces=await api('getFaces');
+  matcher=faces.length?new faceapi.FaceMatcher(faces.map(f=>new faceapi.LabeledFaceDescriptors(String(f.id),[new Float32Array(f.descriptor)])),0.5):null;
+  $('count').textContent=faces.length;
+}
+async function init(){
+  if(typeof faceapi==='undefined') throw new Error('โหลด face-api.js ไม่สำเร็จ');
+  status('กำลังโหลดโมเดล...');
+  await Promise.all([faceapi.nets.ssdMobilenetv1,faceapi.nets.faceLandmark68Net,faceapi.nets.faceRecognitionNet].map(n=>n.loadFromUri(MODEL)));
+  ready=true; status('กำลังโหลดข้อมูลพนักงาน...'); await loadFaces();
+  status('พร้อมแล้ว กด "เปิดกล้อง" เพื่อเริ่ม','ok'); $('btnCam').disabled=false; sync();
+}
+
+// ---------- กล้อง ----------
+async function startCamera(){
+  $('help').style.display='none';
+  if(!navigator.mediaDevices?.getUserMedia) return help('เบราว์เซอร์นี้ไม่รองรับกล้อง หรือหน้านี้ไม่ได้เปิดผ่าน HTTPS');
+  $('btnCam').disabled=true; status('กำลังขออนุญาตใช้กล้อง... กด "อนุญาต" ที่หน้าต่างของเบราว์เซอร์');
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}}});
+    $('v').srcObject=stream; $('cam').classList.add('live'); status('เปิดกล้องแล้ว มองกล้องแล้วกดสแกน','ok'); sync();
+  }catch(e){
+    $('btnCam').disabled=false; status('เปิดกล้องไม่สำเร็จ','error');
+    help({NotAllowedError:'กล้องถูกปฏิเสธ กดไอคอนแม่กุญแจข้างช่องที่อยู่เว็บ เปลี่ยน "กล้อง" เป็นอนุญาต แล้วรีเฟรชหน้า',
+      NotFoundError:'ไม่พบกล้องในอุปกรณ์นี้',NotReadableError:'กล้องถูกใช้งานโดยโปรแกรมอื่น (เช่น Zoom, Line) ปิดแล้วลองใหม่'}[e.name]||('เปิดกล้องไม่สำเร็จ: '+e.message));
+  }
+}
+function help(t){$('help').textContent=t;$('help').style.display='block';}
+const detect=()=>faceapi.detectSingleFace($('v')).withFaceLandmarks().withFaceDescriptor();
+function working(on){busy=on;$('cam').classList.toggle('scanning',on);sync();}
+
+// ---------- สแกนลงเวลา ----------
+async function scan(){
+  if(busy||!stream||!ready) return; working(true);
+  try{
+    const det=await detect();
+    if(!det) return status('ไม่พบใบหน้า มองตรงกล้องแล้วลองอีกครั้ง','warn');
+    if(!matcher) return status('ยังไม่มีข้อมูลใบหน้าที่ลงทะเบียน ไปที่แท็บ "ลงทะเบียนใบหน้า"','warn');
+    const best=matcher.findBestMatch(det.descriptor);
+    if(best.label==='unknown') return status('ไม่รู้จักใบหน้านี้ ลองใหม่ หรือลงทะเบียนใบหน้าก่อน','warn');
+    status('กำลังบันทึกเวลา...');
+    const r=await api('clockInOut',{id:best.label}), isIn=r.type==='เข้างาน';
+    $('res').className='who '+(isIn?'in':'out');
+    $('res').innerHTML=`<div class="av">${esc(r.name[0])}</div><div><b>${esc(r.name)}</b><span class="badge ${isIn?'b-in':'b-out'}">${r.type}</span> <small>เวลา ${r.time}</small></div>`;
+    recent.unshift(r); recent=recent.slice(0,5);
+    $('recent').innerHTML=recent.map(x=>`<li><span>${esc(x.name)}</span><span><span class="badge ${x.type==='เข้างาน'?'b-in':'b-out'}">${x.type}</span> ${x.time}</span></li>`).join('');
+    status(`บันทึก${r.type}ของ ${r.name} แล้ว`,'ok');
+  }catch(e){status(e.message,'error');}
+  finally{working(false);}
+}
+
+// ---------- ลงทะเบียนใบหน้า ----------
+async function register(){
+  const id=$('eId').value.trim(),name=$('eName').value.trim(),group=$('eGroup').value.trim();
+  if(!id||!name) return status('กรอกรหัสและชื่อก่อน','warn');
+  if(faces.some(f=>String(f.id)===id)) return status('รหัสนี้ลงทะเบียนแล้ว','error');
+  working(true);
+  try{
+    const s=[];
+    for(let i=0;i<3;i++){
+      status(`กำลังเก็บภาพใบหน้า ${i+1}/3 ...`);
+      const d=await detect(); if(!d) throw new Error('ไม่พบใบหน้า มองตรงกล้องในที่สว่างแล้วลองอีกครั้ง');
+      if(s.length&&faceapi.euclideanDistance(s[0],d.descriptor)>0.45) throw new Error('ใบหน้าเปลี่ยนระหว่างถ่าย อยู่นิ่งๆ แล้วลองอีกครั้ง');
+      s.push(d.descriptor); await sleep(500);
     }
+    const avg=s[0].map((_,k)=>(s[0][k]+s[1][k]+s[2][k])/3);
+    if(matcher){const b=matcher.findBestMatch(new Float32Array(avg)); if(b.label!=='unknown'&&b.distance<0.4){
+      const o=faces.find(f=>String(f.id)===b.label); throw new Error('ใบหน้านี้ลงทะเบียนไว้แล้วในชื่อ '+(o?o.name:b.label));}}
+    status('กำลังบันทึก...');
+    await api('registerFace',{pin,id,name,group,descriptor:avg});
+    await loadFaces(); ['eId','eName','eGroup'].forEach(k=>$(k).value='');
+    status(`ลงทะเบียน ${name} สำเร็จ`,'ok');
+  }catch(e){if(/รหัสผู้ดูแล/.test(e.message))pin=null; status(e.message,'error');}
+  finally{working(false);}
+}
 
-    // 1) โหลดโมเดล + ข้อมูลพนักงาน (ยังไม่แตะกล้อง)
-    async function init() {
-      if (typeof faceapi === 'undefined') throw new Error('โหลด face-api.js ไม่สำเร็จ');
-      $('status').textContent = 'กำลังโหลดโมเดล...';
-      await Promise.all([
-        faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-      ]);
-      modelsReady = true;
+// ---------- บันทึกเวลา ----------
+async function loadLogs(){
+  $('logBody').innerHTML='<tr><td colspan="5" class="muted">กำลังโหลด...</td></tr>';
+  try{rows=await api('getLogs',{pin,date:$('logDate').value}); renderLogs();}
+  catch(e){if(/รหัสผู้ดูแล/.test(e.message))pin=null; $('logBody').innerHTML=`<tr><td colspan="5" style="color:var(--bad)">${esc(e.message)}</td></tr>`;}
+}
+function renderLogs(){
+  const q=$('logQ').value.trim().toLowerCase(), f=rows.filter(r=>!q||(r.name+' '+r.id).toLowerCase().includes(q));
+  $('sAll').textContent=rows.length;
+  $('sIn').textContent=rows.filter(r=>r.type==='เข้างาน').length;
+  $('sOut').textContent=rows.filter(r=>r.type==='ออกงาน').length;
+  $('logBody').innerHTML=f.length?f.map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.time)}</td><td>${esc(r.id)}</td><td>${esc(r.name)}</td><td><span class="badge ${r.type==='เข้างาน'?'b-in':'b-out'}">${esc(r.type)}</span></td></tr>`).join('')
+    :'<tr><td colspan="5" class="muted">ยังไม่มีบันทึกในวันที่เลือก</td></tr>';
+}
 
-      $('status').textContent = 'กำลังโหลดข้อมูลพนักงาน...';
-      const faces = await api('getFaces');
-      if (faces.length) {
-        matcher = new faceapi.FaceMatcher(faces.map(f =>
-          new faceapi.LabeledFaceDescriptors(String(f.id), [new Float32Array(f.descriptor)])), 0.5);
-      }
-      $('status').textContent = 'พร้อมแล้ว กดปุ่ม "เปิดกล้อง" (พนักงานที่ลงทะเบียน: ' + faces.length + ' คน)';
-      $('btnCam').disabled = false;
-    }
-
-    // 2) ขออนุญาตกล้องเมื่อผู้ใช้กดปุ่ม
-    async function startCamera() {
-      $('err').textContent = '';
-      $('help').style.display = 'none';
-
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        return showHelp('เบราว์เซอร์นี้ไม่รองรับกล้อง หรือหน้านี้ไม่ได้เปิดผ่าน HTTPS');
-      }
-      $('btnCam').disabled = true;
-      $('status').textContent = 'กำลังขออนุญาตใช้กล้อง... กด "อนุญาต" ที่หน้าต่างด้านบนของเบราว์เซอร์';
-
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
-        });
-        $('cam').srcObject = stream;
-        $('cam').style.display = 'inline-block';
-        $('status').textContent = 'เปิดกล้องแล้ว มองกล้องแล้วกด "สแกนใบหน้า"';
-        $('btnScan').disabled = false;
-        $('btnCam').textContent = '📷 เปิดกล้องอยู่';
-      } catch (e) {
-        $('btnCam').disabled = false;
-        $('status').textContent = 'เปิดกล้องไม่สำเร็จ';
-        handleCamError(e);
-      }
-    }
-
-    function handleCamError(e) {
-      $('err').textContent = e.name + ': ' + e.message;
-      if (e.name === 'NotAllowedError') {
-        showHelp(
-          '<b>กล้องถูกปฏิเสธ</b><br>' +
-          'กดไอคอนรูปแม่กุญแจ/ตั้งค่าหน้าเว็บ ข้างช่องที่อยู่เว็บ แล้วเปลี่ยน "กล้อง" เป็น <b>อนุญาต</b> จากนั้นรีเฟรชหน้า');
-      } else if (e.name === 'NotFoundError') {
-        showHelp('ไม่พบกล้องในอุปกรณ์นี้ ตรวจสอบว่าต่อกล้องแล้ว');
-      } else if (e.name === 'NotReadableError') {
-        showHelp('กล้องกำลังถูกใช้งานโดยโปรแกรมอื่น (เช่น Zoom, Line) ปิดโปรแกรมนั้นก่อนแล้วลองใหม่');
-      } else if (e.name === 'SecurityError') {
-        showHelp('หน้านี้ไม่ได้รับอนุญาตให้ใช้กล้อง ตรวจสอบว่าเปิดผ่าน HTTPS และไม่ได้ฝังอยู่ใน iframe');
-      } else {
-        showHelp('เปิดกล้องไม่สำเร็จ: ' + e.message);
-      }
-    }
-
-    function showHelp(html) { $('help').innerHTML = html; $('help').style.display = 'block'; }
-
-    // 3) สแกน
-    async function scan() {
-      if (!modelsReady) return;
-      const det = await faceapi.detectSingleFace($('cam')).withFaceLandmarks().withFaceDescriptor();
-      if (!det) { $('status').textContent = 'ไม่พบใบหน้า ลองใหม่อีกครั้ง'; return; }
-      if (!matcher) { $('status').textContent = 'ยังไม่มีข้อมูลใบหน้าที่ลงทะเบียน'; return; }
-      const best = matcher.findBestMatch(det.descriptor);
-      if (best.label === 'unknown') { $('status').textContent = 'ไม่รู้จักใบหน้านี้'; return; }
-
-      $('btnScan').disabled = true;
-      try {
-        const r = await api('clockInOut', { id: best.label });
-        $('status').textContent = r.name + ' ' + r.type + ' เวลา ' + r.time;
-      } catch (e) {
-        $('err').textContent += 'Server: ' + e.message + '\n';
-      }
-      $('btnScan').disabled = false;
-    }
-
-    init().catch(e => {
-      $('status').textContent = 'เริ่มระบบไม่สำเร็จ';
-      $('err').textContent += e.name + ': ' + e.message + '\n';
-    });
-  </script>
+// ---------- สลับหน้า ----------
+async function setView(v){
+  if(v!=='clock'&&!pin){
+    const p=prompt('ใส่รหัสผู้ดูแล'); if(!p) return;
+    try{await api('checkPin',{pin:p}); pin=p;}catch(e){alert(e.message); return;}
+  }
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  $('main').hidden=v==='logs'; $('v-logs').hidden=v!=='logs';
+  $('v-clock').hidden=v!=='clock'; $('v-reg').hidden=v!=='reg';
+  if(v==='logs') loadLogs();
+}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>setView(b.dataset.v));
+$('btnCam').onclick=startCamera; $('btnScan').onclick=scan; $('btnReg').onclick=register;
+$('btnLog').onclick=loadLogs; $('logDate').onchange=loadLogs; $('logQ').oninput=renderLogs;
+$('logDate').value=today();
+window.onunhandledrejection=e=>status(e.reason?.message||String(e.reason),'error');
+init().catch(e=>status('เริ่มระบบไม่สำเร็จ: '+e.message,'error'));
+</script>
 </body>
 </html>
