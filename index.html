@@ -40,8 +40,18 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transfor
 .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
 .btn:disabled{background:#d0d5dd;color:#fff;cursor:not-allowed}
 .row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}.row .btn{flex:1}
-#status{margin-top:12px;padding:10px 14px;border-radius:10px;background:#eef2ff;font-size:.95rem}
-#status.ok{background:#e7f8f1;color:#05603a}#status.warn{background:#fff4e0;color:#93370d}#status.error{background:#fee4e2;color:#912018}
+#status{margin-top:12px;padding:12px 14px;border-radius:14px;background:#eef2ff;border:1px solid #dbe3ff;display:flex;gap:12px;align-items:center}
+#status i{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font:600 1rem 'Prompt',sans-serif;font-style:normal;color:#fff;border:3px solid #c7d2fe;border-top-color:var(--pri);animation:spin .8s linear infinite}
+#status b{display:block;font-weight:500}#status span{display:block;font-size:.85rem;opacity:.8}
+#status.ok{background:#e7f8f1;border-color:#b7ebd5;color:#05603a}#status.warn{background:#fff4e0;border-color:#fcd9a0;color:#93370d}#status.error{background:#fee4e2;border-color:#fecdca;color:#912018}
+#status.ok i,#status.warn i,#status.error i{animation:none;border:0}
+#status.ok i{background:var(--ok)}#status.warn i{background:var(--out)}#status.error i{background:var(--bad)}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){#status i{animation:none}}
+.b-late{background:#fee4e2;color:#912018}
+.rules{display:grid;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);font-size:.9rem;color:var(--mut)}
+.rules span::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;background:var(--c)}
+.sub{margin:-8px 0 8px;color:var(--mut);font-size:.9rem}
 #help{display:none;margin-top:12px;padding:12px;border-radius:10px;background:#fff4e0;color:#93370d;font-size:.9rem}
 .who{display:flex;align-items:center;gap:14px}
 .av{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;font:600 1.4rem 'Prompt',sans-serif;color:#fff;background:var(--mut);flex:none}
@@ -54,7 +64,7 @@ li{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-top:1
 .muted{color:var(--mut);font-size:.9rem}
 label{display:block;font-size:.9rem;font-weight:500;margin:10px 0 4px}
 input{width:100%;padding:10px 12px;border:1px solid #cfd6e4;border-radius:10px;font:inherit}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
 .stats div{background:var(--bg);border-radius:12px;padding:10px;text-align:center}
 .stats b{display:block;font:600 1.5rem 'Prompt',sans-serif}.stats span{font-size:.85rem;color:var(--mut)}
 .tools{display:flex;gap:8px;flex-wrap:wrap}.tools input{flex:1;min-width:140px;width:auto}
@@ -99,8 +109,8 @@ dialog .row{margin-top:8px}
     <div id="v-clock">
       <div class="card"><div class="who" id="res"><div class="av">?</div><div><b>ยังไม่มีการสแกน</b><small>มองกล้องแล้วกดสแกนใบหน้า</small></div></div>
         <div class="row"><button class="btn" id="btnScan" disabled>สแกนใบหน้า</button></div></div>
-      <div class="card"><h2>ลงเวลาล่าสุด</h2><ul id="recent"><li class="muted">ยังไม่มีรายการในรอบนี้</li></ul>
-        <p class="muted" style="margin:12px 0 0">พนักงานที่ลงทะเบียน <b id="count">0</b> คน</p></div>
+      <div class="card"><h2>ลงเวลาล่าสุด</h2><p class="sub" id="todayLbl">ประจำวัน</p><ul id="recent"><li class="muted">ยังไม่มีรายการในรอบนี้</li></ul>
+        <div class="rules"><span style="--c:var(--ok)">เข้างานตรงเวลา 06:00 ถึง 09:00 น.</span><span style="--c:var(--bad)">หลัง 09:00 น. นับว่าสาย สแกนได้ถึง 12:00 น.</span><span style="--c:var(--out)">ออกงานได้ตั้งแต่ 16:30 น.</span></div><p class="muted" style="margin:12px 0 0">พนักงานที่ลงทะเบียน <b id="count">0</b> คน</p></div>
     </div>
     <div id="v-reg" hidden>
       <div class="card"><h2>เพิ่มข้อมูลใบหน้า</h2>
@@ -116,8 +126,8 @@ dialog .row{margin-top:8px}
 <section class="card" id="v-logs" hidden>
   <h2>บันทึกเวลา</h2>
   <div class="tools"><input type="date" id="logDate" aria-label="วันที่"><input id="logQ" placeholder="ค้นหาชื่อหรือรหัส"><button class="btn ghost" id="btnLog">โหลดใหม่</button></div>
-  <div class="stats"><div><b id="sAll">0</b><span>ทั้งหมด</span></div><div><b id="sIn">0</b><span>เข้างาน</span></div><div><b id="sOut">0</b><span>ออกงาน</span></div></div>
-  <div class="scroll"><table><thead><tr><th>วันที่</th><th>เวลา</th><th>รหัส</th><th>ชื่อ</th><th>ประเภท</th></tr></thead><tbody id="logBody"></tbody></table></div>
+  <div class="stats"><div><b id="sAll">0</b><span>ทั้งหมด</span></div><div><b id="sIn">0</b><span>เข้างาน</span></div><div><b id="sLate">0</b><span>สาย</span></div><div><b id="sOut">0</b><span>ออกงาน</span></div></div>
+  <div class="scroll"><table><thead><tr><th>วันที่</th><th>เวลา</th><th>รหัส</th><th>ชื่อ</th><th>ประเภท</th><th>สถานะ</th></tr></thead><tbody id="logBody"></tbody></table></div>
 </section>
 </div>
 
@@ -152,12 +162,16 @@ function askPin(){return new Promise(res=>{
     catch(err){m.textContent=err.message;i.select();}
     $('pinOk').disabled=false;};
 });}
-function status(t,k=''){const s=$('status');s.textContent=t;s.className=k;}
+function status(t,k='',sub=''){const s=$('status');s.className=k;
+  s.innerHTML=`<i>${{ok:'✓',warn:'!',error:'✕'}[k]||''}</i><div><b>${esc(t)}</b>${sub?`<span>${esc(sub)}</span>`:''}</div>`;}
+const thDate=d=>new Date(d+'T12:00:00+07:00').toLocaleDateString('th-TH',{timeZone:TZ,weekday:'long',day:'numeric',month:'long',year:'numeric'});
+const lineHtml=x=>`<li><div><b>${esc(x.name)}</b><div class="muted">${thDate(x.date)}</div></div><div style="text-align:right"><span class="badge ${x.type==='เข้างาน'?'b-in':'b-out'}">${x.type}</span>${x.status==='สาย'?' <span class="badge b-late">สาย '+x.lateMin+' นาที</span>':x.status==='ตรงเวลา'?' <span class="badge b-in">ตรงเวลา</span>':''}<div class="muted">${x.time} น.</div></div></li>`;
 function sync(){const on=!!stream&&ready&&!busy;$('btnScan').disabled=!on;$('btnReg').disabled=!on;}
 const today=()=>new Date().toLocaleDateString('en-CA',{timeZone:TZ});
 
 function tick(){const d=new Date();
   $('clock').textContent=d.toLocaleTimeString('th-TH',{timeZone:TZ,hour12:false});
+  $('todayLbl').textContent='ประจำวัน'+d.toLocaleDateString('th-TH',{timeZone:TZ,weekday:'long',day:'numeric',month:'long',year:'numeric'});
   $('date').textContent=d.toLocaleDateString('th-TH',{timeZone:TZ,weekday:'long',day:'numeric',month:'long',year:'numeric'});}
 tick();setInterval(tick,1000);
 
@@ -269,17 +283,18 @@ async function register(){
 
 // ---------- บันทึกเวลา ----------
 async function loadLogs(){
-  $('logBody').innerHTML='<tr><td colspan="5" class="muted">กำลังโหลด...</td></tr>';
+  $('logBody').innerHTML='<tr><td colspan="6" class="muted">กำลังโหลด...</td></tr>';
   try{rows=await api('getLogs',{pin,date:$('logDate').value}); renderLogs();}
-  catch(e){if(/รหัสผู้ดูแล/.test(e.message))pin=null; $('logBody').innerHTML=`<tr><td colspan="5" style="color:var(--bad)">${esc(e.message)}</td></tr>`;}
+  catch(e){if(/รหัสผู้ดูแล/.test(e.message))pin=null; $('logBody').innerHTML=`<tr><td colspan="6" style="color:var(--bad)">${esc(e.message)}</td></tr>`;}
 }
 function renderLogs(){
   const q=$('logQ').value.trim().toLowerCase(), f=rows.filter(r=>!q||(r.name+' '+r.id).toLowerCase().includes(q));
   $('sAll').textContent=rows.length;
   $('sIn').textContent=rows.filter(r=>r.type==='เข้างาน').length;
+  $('sLate').textContent=rows.filter(r=>r.status==='สาย').length;
   $('sOut').textContent=rows.filter(r=>r.type==='ออกงาน').length;
-  $('logBody').innerHTML=f.length?f.map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.time)}</td><td>${esc(r.id)}</td><td>${esc(r.name)}</td><td><span class="badge ${r.type==='เข้างาน'?'b-in':'b-out'}">${esc(r.type)}</span></td></tr>`).join('')
-    :'<tr><td colspan="5" class="muted">ยังไม่มีบันทึกในวันที่เลือก</td></tr>';
+  $('logBody').innerHTML=f.length?f.map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.time)}</td><td>${esc(r.id)}</td><td>${esc(r.name)}</td><td><span class="badge ${r.type==='เข้างาน'?'b-in':'b-out'}">${esc(r.type)}</span></td><td>${r.status?`<span class="badge ${r.status==='สาย'?'b-late':'b-in'}">${esc(r.status)}</span>`:'-'}</td></tr>`).join('')
+    :'<tr><td colspan="6" class="muted">ยังไม่มีบันทึกในวันที่เลือก</td></tr>';
 }
 
 // ---------- สลับหน้า ----------
