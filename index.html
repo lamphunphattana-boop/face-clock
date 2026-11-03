@@ -163,7 +163,7 @@ tick();setInterval(tick,1000);
 
 async function loadFaces(){
   faces=await api('getFaces');
-  matcher=faces.length?new faceapi.FaceMatcher(faces.map(f=>new faceapi.LabeledFaceDescriptors(String(f.id),[new Float32Array(f.descriptor)])),0.5):null;
+  matcher=faces.length?new faceapi.FaceMatcher(faces.map(f=>new faceapi.LabeledFaceDescriptors(String(f.id),[new Float32Array(Object.values(f.descriptor))])),0.5):null;
   $('count').textContent=faces.length;
 }
 async function init(){
@@ -230,7 +230,7 @@ async function register(){
     if(matcher){const b=matcher.findBestMatch(new Float32Array(avg)); if(b.label!=='unknown'&&b.distance<0.4){
       const o=faces.find(f=>String(f.id)===b.label); throw new Error('ใบหน้านี้ลงทะเบียนไว้แล้วในชื่อ '+(o?o.name:b.label));}}
     status('กำลังบันทึก...');
-    await api('registerFace',{pin,id,name,group,descriptor:avg});
+    await api('registerFace',{pin,id,name,group,descriptor:Array.from(avg)});
     await loadFaces(); ['eId','eName','eGroup'].forEach(k=>$(k).value='');
     status(`ลงทะเบียน ${name} สำเร็จ`,'ok'); toast(`ลงทะเบียน ${name} สำเร็จ`,'ok');
   }catch(e){if(/รหัสผู้ดูแล/.test(e.message))pin=null; status(e.message,'error');}
